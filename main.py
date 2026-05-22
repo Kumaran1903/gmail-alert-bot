@@ -3,10 +3,12 @@ import json
 import time
 import requests
 
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
+
 from dotenv import load_dotenv
 
 from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
 
@@ -56,6 +58,9 @@ INFOSYS_KEYWORDS = [
 ]
 
 checked_messages = set()
+
+# Bot start time
+BOT_START_TIME = datetime.now(timezone.utc)
 
 
 # =====================================
@@ -176,7 +181,7 @@ def check_emails(service):
         results = service.users().messages().list(
             userId='me',
             labelIds=[label],
-            q='is:unread',
+            q='is:unread newer_than:1d',
             maxResults=10
         ).execute()
 
@@ -190,6 +195,7 @@ def check_emails(service):
 
             msg_id = msg['id']
 
+            # Avoid duplicate alerts
             if msg_id in checked_messages:
                 continue
 
@@ -205,8 +211,16 @@ def check_emails(service):
 
             subject, sender, date = extract_headers(headers)
 
+            # Convert email date
+            email_datetime = parsedate_to_datetime(date)
+
+            # Ignore old emails before bot started
+            if email_datetime < BOT_START_TIME:
+                continue
+
             text_to_check = f"{subject} {sender}".lower()
 
+            # Check for Infosys-related keywords
             is_infosys = any(
                 keyword in text_to_check
                 for keyword in INFOSYS_KEYWORDS
@@ -232,7 +246,7 @@ def check_emails(service):
 
                 send_whatsapp(subject)
 
-            # MARK EMAIL AS READ
+            # Mark email as read
             service.users().messages().modify(
                 userId='me',
                 id=msg_id,
@@ -249,6 +263,7 @@ def check_emails(service):
 def main():
 
     print("\nStarting Infosys Email Alert Bot...\n")
+    print("Monitoring only NEW emails from now onwards...\n")
 
     service = authenticate_gmail()
 
