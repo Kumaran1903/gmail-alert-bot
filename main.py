@@ -278,9 +278,9 @@ def main():
             print("\nERROR:")
             print(e)
 
-        print("\nSleeping for 10 seconds...\n")
+        print("\nSleeping for 900 seconds...\n")
 
-        time.sleep(10)
+        time.sleep(900)
 
 
 # =====================================
